@@ -100,10 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(foundUser);
         localStorage.setItem('optigov_currentUser', JSON.stringify(foundUser));
         resetSessionTimeout();
+        dataManager.logActivity(foundUser.id, 'User Login', `${foundUser.role} logged in`, 'login');
         return true;
       }
       return false;
     } catch (error) {
+      console.error('Login error:', error);
       return false;
     }
   };
@@ -116,11 +118,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetSessionTimeout();
       return true;
     } catch (error) {
+      console.error('Registration error:', error);
       return false;
     }
   };
 
   const logout = () => {
+    if (user) {
+      dataManager.logActivity(user.id, 'User Logout', `${user.role} logged out`, 'login');
+    }
     setUser(null);
     localStorage.removeItem('optigov_currentUser');
     setSessionTimeout(SESSION_TIMEOUT);

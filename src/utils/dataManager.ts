@@ -1,4 +1,4 @@
-// Enhanced Data Manager for OptiGov Platform
+// Enhanced Data Manager for OptiGov Platform - Real User Data Only
 export interface User {
   id: string;
   username: string;
@@ -63,18 +63,6 @@ export interface Alert {
   resolved: boolean;
 }
 
-export interface Company {
-  id: string;
-  name: string;
-  email: string;
-  region: string;
-  category: string;
-  totalRequests: number;
-  completedRequests: number;
-  warnings: string[];
-  createdAt: string;
-}
-
 export interface ComplianceItem {
   companyId: string;
   checklist: boolean[];
@@ -109,6 +97,14 @@ export interface ChatMessage {
   }>;
 }
 
+export interface AdminNote {
+  id: string;
+  adminId: string;
+  targetUserId: string;
+  content: string;
+  timestamp: string;
+}
+
 // Default compliance checklist items
 export const DEFAULT_COMPLIANCE_RULES = [
   'Data Protection Officer Appointed',
@@ -127,7 +123,7 @@ class DataManager {
   private static instance: DataManager;
 
   private constructor() {
-    this.initializeDefaultData();
+    // No initialization of dummy data - everything starts empty
   }
 
   static getInstance(): DataManager {
@@ -157,49 +153,6 @@ class DataManager {
 
   private triggerStorageEvent(): void {
     window.dispatchEvent(new Event('optigov-data-updated'));
-  }
-
-  private initializeDefaultData(): void {
-    // Initialize with some default companies if none exist
-    const users = this.getStorageItem<User[]>('optigov_users', []);
-    const companies = users.filter(u => u.role === 'company');
-    
-    if (companies.length === 0) {
-      const defaultCompanies = [
-        { name: 'GTBank Nigeria', type: 'Banking', email: 'contact@gtbank.com' },
-        { name: 'Jumia Nigeria', type: 'E-commerce', email: 'contact@jumia.com.ng' },
-        { name: 'MTN Nigeria', type: 'Telecommunications', email: 'contact@mtn.ng' },
-        { name: 'Flutterwave', type: 'Fintech', email: 'contact@flutterwave.com' },
-        { name: 'Paystack', type: 'Fintech', email: 'contact@paystack.com' }
-      ];
-
-      defaultCompanies.forEach((company, index) => {
-        const companyUser: User = {
-          id: this.generateId(),
-          username: company.name.toLowerCase().replace(/\s+/g, ''),
-          email: company.email,
-          password: 'password123',
-          phone: `+234${8000000000 + index}`,
-          role: 'company',
-          organizationName: company.name,
-          organizationType: company.type,
-          registrationNumber: `RC${1000 + index}`,
-          contactPerson: 'Johnson Blessing',
-          address: 'Lagos, Nigeria',
-          website: `https://${company.name.toLowerCase().replace(/\s+/g, '')}.com`,
-          createdAt: new Date().toISOString(),
-          lastActivity: new Date().toISOString(),
-          isActive: true
-        };
-        
-        users.push(companyUser);
-        
-        // Initialize compliance checklist
-        this.createComplianceChecklist(companyUser.id);
-      });
-      
-      this.setStorageItem('optigov_users', users);
-    }
   }
 
   // User Management
@@ -253,24 +206,9 @@ class DataManager {
     return this.getStorageItem<User[]>('optigov_users', []);
   }
 
-  getCompanies(): Company[] {
+  getCompanies(): User[] {
     const users = this.getAllUsers();
-    return users
-      .filter(u => u.role === 'company')
-      .map(u => {
-        const requests = this.getRequestsByCompany(u.id);
-        return {
-          id: u.id,
-          name: u.organizationName || u.username,
-          email: u.email,
-          region: 'Lagos', // Default region
-          category: u.organizationType || 'Technology',
-          totalRequests: requests.length,
-          completedRequests: requests.filter(r => r.status === 'approved').length,
-          warnings: [],
-          createdAt: u.createdAt
-        };
-      });
+    return users.filter(u => u.role === 'company' && u.isActive);
   }
 
   updateUser(userId: string, updates: Partial<User>): void {
@@ -515,7 +453,57 @@ class DataManager {
     return this.getStorageItem<ActivityLog[]>('optigov_activities', []);
   }
 
-  // Analytics
+  // Chat Management
+  createChatMessage(requestId: string, sender: string, senderRole: 'citizen' | 'company', message: string): void {
+    const chats = this.getStorageItem<ChatMessage[]>('optigov_chats', []);
+    const chatIndex = chats.findIndex(c => c.requestId === requestId);
+    
+    const newMessage = {
+      id: this.generateId(),
+      sender,
+      senderRole,
+      message,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (chatIndex !== -1) {
+      chats[chatIndex].messages.push(newMessage);
+    } else {
+      chats.push({
+        requestId,
+        messages: [newMessage]
+      });
+    }
+    
+    this.setStorageItem('optigov_chats', chats);
+  }
+
+  getChatMessages(requestId: string): ChatMessage | null {
+    const chats = this.getStorageItem<ChatMessage[]>('optigov_chats', []);
+    return chats.find(c => c.requestId === requestId) || null;
+  }
+
+  // Admin Notes
+  createAdminNote(adminId: string, targetUserId: string, content: string): void {
+    const notes = this.getStorageItem<AdminNote[]>('optigov_notes', []);
+    
+    notes.push({
+      id: this.generateId(),
+      adminId,
+      targetUserId,
+      content,
+      timestamp: new Date().toISOString()
+    });
+    
+    this.setStorageItem('optigov_notes', notes);
+  }
+
+  getAdminNotes(targetUserId?: string): AdminNote[] {
+    const notes = this.getStorageItem<AdminNote[]>('optigov_notes', []);
+    return targetUserId ? notes.filter(n => n.targetUserId === targetUserId) : notes;
+  }
+
+  // Analytics - Real Data Only
   getAnalytics() {
     const users = this.getAllUsers();
     const requests = this.getAllRequests();
@@ -533,8 +521,13 @@ class DataManager {
     const requestsByRegion: { [key: string]: number } = {};
     requests.forEach(request => {
       const company = users.find(u => u.id === request.companyId);
-      if (company) {
-        const region = 'Lagos'; // Default region for now
+      if (company && company.address) {
+        // Extract region from address (simplified)
+        const region = company.address.includes('Lagos') ? 'Lagos' :
+                      company.address.includes('Abuja') ? 'Abuja' :
+                      company.address.includes('Kano') ? 'Kano' :
+                      company.address.includes('Port Harcourt') ? 'Port Harcourt' :
+                      'Other';
         requestsByRegion[region] = (requestsByRegion[region] || 0) + 1;
       }
     });
@@ -578,11 +571,12 @@ class DataManager {
       'optigov_alerts',
       'optigov_compliance',
       'optigov_uploads',
-      'optigov_activities'
+      'optigov_activities',
+      'optigov_chats',
+      'optigov_notes'
     ];
     
     keys.forEach(key => localStorage.removeItem(key));
-    this.initializeDefaultData();
   }
 }
 

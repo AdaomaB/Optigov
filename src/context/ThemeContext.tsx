@@ -19,7 +19,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   useEffect(() => {
+    // Save theme preference
     localStorage.setItem('optigov_theme', isDark ? 'dark' : 'light');
+    
+    // Apply theme to document
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -28,7 +31,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isDark]);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    setIsDark(prev => !prev);
   };
 
   return (
