@@ -147,7 +147,7 @@ const LoginPage: React.FC = () => {
         const success = await login(formData.email, formData.password);
         if (success) {
           showToast('Login successful!', 'success');
-          // Navigation is handled in AuthContext
+          // Navigation will be handled based on the actual user role from database
         } else {
           setError('Invalid email or password');
         }
@@ -158,7 +158,7 @@ const LoginPage: React.FC = () => {
           email: formData.email,
           password: formData.password,
           phone: formData.phone,
-          role: activeTab
+          role: activeTab // This ensures the user gets the role they selected
         };
 
         if (activeTab === 'citizen') {
@@ -182,7 +182,7 @@ const LoginPage: React.FC = () => {
 
         if (success) {
           showToast('Account created successfully!', 'success');
-          // Navigation is handled in AuthContext
+          // Navigation will be handled based on the role they just registered with
         } else {
           setError('User with this email or username already exists');
         }
