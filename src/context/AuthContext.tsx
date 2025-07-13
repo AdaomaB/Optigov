@@ -94,26 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const foundUser = dataManager.getUser(email, password);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('optigov_currentUser', JSON.stringify(foundUser));
-      resetSessionTimeout();
-      return true;
+    try {
+      const foundUser = dataManager.getUser(email, password);
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('optigov_currentUser', JSON.stringify(foundUser));
+        resetSessionTimeout();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      return false;
     }
-    return false;
   };
 
   const register = async (userData: Omit<User, 'id' | 'createdAt' | 'lastActivity' | 'isActive'>): Promise<boolean> => {
     try {
-      // Check if user already exists
-      const existingUsers = dataManager.getAllUsers();
-      const userExists = existingUsers.some(u => u.email === userData.email || u.username === userData.username);
-      
-      if (userExists) {
-        return false; // User already exists
-      }
-
       const newUser = dataManager.createUser(userData);
       setUser(newUser);
       localStorage.setItem('optigov_currentUser', JSON.stringify(newUser));

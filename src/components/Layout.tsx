@@ -18,7 +18,9 @@ import {
   Bell,
   AlertTriangle,
   Send,
-  CheckSquare
+  CheckSquare,
+  Eye,
+  UserCheck
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -53,6 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, activeView, onViewChan
       case 'admin':
         return [
           { id: 'companies', icon: Building, label: 'Companies' },
+          { id: 'users', icon: Users, label: 'Manage Users' },
           { id: 'analysis', icon: BarChart3, label: 'Analysis' },
           { id: 'reports', icon: FileText, label: 'Reports' },
           { id: 'notifications', icon: Bell, label: 'Notifications' },
@@ -63,6 +66,21 @@ const Layout: React.FC<LayoutProps> = ({ children, title, activeView, onViewChan
   };
 
   const navigationItems = getNavigationItems();
+
+  const getUserDisplayName = () => {
+    if (!user) return '';
+    
+    switch (user.role) {
+      case 'citizen':
+        return `${user.firstName} ${user.lastName}` || user.username;
+      case 'company':
+        return user.organizationName || user.username;
+      case 'admin':
+        return user.username;
+      default:
+        return user.username;
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -129,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, activeView, onViewChan
               
               <div className="flex items-center space-x-3">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{getUserDisplayName()}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
                 </div>
                 <button

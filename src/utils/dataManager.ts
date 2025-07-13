@@ -54,30 +54,31 @@ export interface Notification {
   type: 'info' | 'warning' | 'success' | 'error';
 }
 
-export interface ChatMessage {
-  requestId: string;
-  messages: Array<{
-    id: string;
-    sender: string;
-    senderRole: 'citizen' | 'company';
-    message: string;
-    timestamp: string;
-  }>;
+export interface Alert {
+  id: string;
+  citizenId: string;
+  message: string;
+  type: 'breach' | 'warning' | 'info';
+  date: string;
+  resolved: boolean;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  email: string;
+  region: string;
+  category: string;
+  totalRequests: number;
+  completedRequests: number;
+  warnings: string[];
+  createdAt: string;
 }
 
 export interface ComplianceItem {
   companyId: string;
   checklist: boolean[];
   lastUpdated: string;
-}
-
-export interface AdminNote {
-  id: string;
-  adminId: string;
-  targetUserId: string;
-  content: string;
-  timestamp: string;
-  type: 'user' | 'company';
 }
 
 export interface Upload {
@@ -97,8 +98,19 @@ export interface ActivityLog {
   type: 'request' | 'response' | 'upload' | 'login' | 'notification';
 }
 
+export interface ChatMessage {
+  requestId: string;
+  messages: Array<{
+    id: string;
+    sender: string;
+    senderRole: 'citizen' | 'company';
+    message: string;
+    timestamp: string;
+  }>;
+}
+
 // Default compliance checklist items
-export const COMPLIANCE_CHECKLIST = [
+export const DEFAULT_COMPLIANCE_RULES = [
   'Data Protection Officer Appointed',
   'Privacy Policy Published and Updated',
   'Data Breach Response Plan Implemented',
@@ -111,25 +123,11 @@ export const COMPLIANCE_CHECKLIST = [
   'Incident Response Procedures Ready'
 ];
 
-// Predefined companies for testing
-export const PREDEFINED_COMPANIES = [
-  { name: 'GTBank Nigeria', organizationType: 'Banking', registrationNumber: 'RC001' },
-  { name: 'Jumia Nigeria', organizationType: 'E-commerce', registrationNumber: 'RC002' },
-  { name: 'MTN Nigeria', organizationType: 'Telecommunications', registrationNumber: 'RC003' },
-  { name: 'Flutterwave', organizationType: 'Fintech', registrationNumber: 'RC004' },
-  { name: 'Paystack', organizationType: 'Fintech', registrationNumber: 'RC005' },
-  { name: 'Konga', organizationType: 'E-commerce', registrationNumber: 'RC006' },
-  { name: 'Airtel Nigeria', organizationType: 'Telecommunications', registrationNumber: 'RC007' },
-  { name: 'First Bank Nigeria', organizationType: 'Banking', registrationNumber: 'RC008' },
-  { name: 'Zenith Bank', organizationType: 'Banking', registrationNumber: 'RC009' },
-  { name: 'Access Bank', organizationType: 'Banking', registrationNumber: 'RC010' }
-];
-
 class DataManager {
   private static instance: DataManager;
 
   private constructor() {
-    this.initializePredefinedCompanies();
+    this.initializeDefaultData();
   }
 
   static getInstance(): DataManager {
@@ -161,22 +159,31 @@ class DataManager {
     window.dispatchEvent(new Event('optigov-data-updated'));
   }
 
-  private initializePredefinedCompanies(): void {
+  private initializeDefaultData(): void {
+    // Initialize with some default companies if none exist
     const users = this.getStorageItem<User[]>('optigov_users', []);
-    const existingCompanies = users.filter(u => u.role === 'company');
+    const companies = users.filter(u => u.role === 'company');
     
-    if (existingCompanies.length === 0) {
-      PREDEFINED_COMPANIES.forEach((company, index) => {
+    if (companies.length === 0) {
+      const defaultCompanies = [
+        { name: 'GTBank Nigeria', type: 'Banking', email: 'contact@gtbank.com' },
+        { name: 'Jumia Nigeria', type: 'E-commerce', email: 'contact@jumia.com.ng' },
+        { name: 'MTN Nigeria', type: 'Telecommunications', email: 'contact@mtn.ng' },
+        { name: 'Flutterwave', type: 'Fintech', email: 'contact@flutterwave.com' },
+        { name: 'Paystack', type: 'Fintech', email: 'contact@paystack.com' }
+      ];
+
+      defaultCompanies.forEach((company, index) => {
         const companyUser: User = {
           id: this.generateId(),
           username: company.name.toLowerCase().replace(/\s+/g, ''),
-          email: `contact@${company.name.toLowerCase().replace(/\s+/g, '')}.com`,
+          email: company.email,
           password: 'password123',
           phone: `+234${8000000000 + index}`,
           role: 'company',
           organizationName: company.name,
-          organizationType: company.organizationType,
-          registrationNumber: company.registrationNumber,
+          organizationType: company.type,
+          registrationNumber: `RC${1000 + index}`,
           contactPerson: 'Johnson Blessing',
           address: 'Lagos, Nigeria',
           website: `https://${company.name.toLowerCase().replace(/\s+/g, '')}.com`,
@@ -198,6 +205,12 @@ class DataManager {
   // User Management
   createUser(userData: Omit<User, 'id' | 'createdAt' | 'lastActivity' | 'isActive'>): User {
     const users = this.getStorageItem<User[]>('optigov_users', []);
+    
+    // Check for existing user
+    const existingUser = users.find(u => u.email === userData.email || u.username === userData.username);
+    if (existingUser) {
+      throw new Error('User with this email or username already exists');
+    }
     
     const newUser: User = {
       ...userData,
@@ -240,6 +253,26 @@ class DataManager {
     return this.getStorageItem<User[]>('optigov_users', []);
   }
 
+  getCompanies(): Company[] {
+    const users = this.getAllUsers();
+    return users
+      .filter(u => u.role === 'company')
+      .map(u => {
+        const requests = this.getRequestsByCompany(u.id);
+        return {
+          id: u.id,
+          name: u.organizationName || u.username,
+          email: u.email,
+          region: 'Lagos', // Default region
+          category: u.organizationType || 'Technology',
+          totalRequests: requests.length,
+          completedRequests: requests.filter(r => r.status === 'approved').length,
+          warnings: [],
+          createdAt: u.createdAt
+        };
+      });
+  }
+
   updateUser(userId: string, updates: Partial<User>): void {
     const users = this.getStorageItem<User[]>('optigov_users', []);
     const userIndex = users.findIndex(u => u.id === userId);
@@ -252,10 +285,6 @@ class DataManager {
 
   updateUserActivity(userId: string): void {
     this.updateUser(userId, { lastActivity: new Date().toISOString() });
-  }
-
-  deactivateUser(userId: string): void {
-    this.updateUser(userId, { isActive: false });
   }
 
   // Request Management
@@ -370,34 +399,35 @@ class DataManager {
     }
   }
 
-  // Chat Management
-  createChatMessage(requestId: string, sender: string, senderRole: 'citizen' | 'company', message: string): void {
-    const chats = this.getStorageItem<ChatMessage[]>('optigov_chats', []);
-    let chatIndex = chats.findIndex(c => c.requestId === requestId);
+  // Alert Management
+  createAlert(alertData: Omit<Alert, 'id' | 'date'>): Alert {
+    const alerts = this.getStorageItem<Alert[]>('optigov_alerts', []);
     
-    const newMessage = {
+    const newAlert: Alert = {
+      ...alertData,
       id: this.generateId(),
-      sender,
-      senderRole,
-      message,
-      timestamp: new Date().toISOString()
+      date: new Date().toISOString()
     };
     
-    if (chatIndex === -1) {
-      chats.push({
-        requestId,
-        messages: [newMessage]
-      });
-    } else {
-      chats[chatIndex].messages.push(newMessage);
-    }
+    alerts.push(newAlert);
+    this.setStorageItem('optigov_alerts', alerts);
     
-    this.setStorageItem('optigov_chats', chats);
+    return newAlert;
   }
 
-  getChatMessages(requestId: string): ChatMessage | null {
-    const chats = this.getStorageItem<ChatMessage[]>('optigov_chats', []);
-    return chats.find(c => c.requestId === requestId) || null;
+  getAlertsByUser(userId: string): Alert[] {
+    const alerts = this.getStorageItem<Alert[]>('optigov_alerts', []);
+    return alerts.filter(a => a.citizenId === userId);
+  }
+
+  resolveAlert(alertId: string): void {
+    const alerts = this.getStorageItem<Alert[]>('optigov_alerts', []);
+    const alertIndex = alerts.findIndex(a => a.id === alertId);
+    
+    if (alertIndex !== -1) {
+      alerts[alertIndex].resolved = true;
+      this.setStorageItem('optigov_alerts', alerts);
+    }
   }
 
   // Compliance Management
@@ -407,7 +437,7 @@ class DataManager {
     if (!compliance.find(c => c.companyId === companyId)) {
       compliance.push({
         companyId,
-        checklist: new Array(COMPLIANCE_CHECKLIST.length).fill(false),
+        checklist: new Array(DEFAULT_COMPLIANCE_RULES.length).fill(false),
         lastUpdated: new Date().toISOString()
       });
       
@@ -437,27 +467,6 @@ class DataManager {
     
     const completedItems = compliance.checklist.filter(item => item).length;
     return Math.round((completedItems / compliance.checklist.length) * 100);
-  }
-
-  // Admin Notes
-  createAdminNote(adminId: string, targetUserId: string, content: string, type: 'user' | 'company'): void {
-    const notes = this.getStorageItem<AdminNote[]>('optigov_notes', []);
-    
-    notes.push({
-      id: this.generateId(),
-      adminId,
-      targetUserId,
-      content,
-      type,
-      timestamp: new Date().toISOString()
-    });
-    
-    this.setStorageItem('optigov_notes', notes);
-  }
-
-  getAdminNotes(targetUserId?: string): AdminNote[] {
-    const notes = this.getStorageItem<AdminNote[]>('optigov_notes', []);
-    return targetUserId ? notes.filter(n => n.targetUserId === targetUserId) : notes;
   }
 
   // Upload Management
@@ -516,7 +525,7 @@ class DataManager {
     const totalAdmins = users.filter(u => u.role === 'admin').length;
     
     const totalRequests = requests.length;
-    const approvedRequests = requests.filter(r => r.status === 'approved').length;
+    const completedRequests = requests.filter(r => r.status === 'approved').length;
     const pendingRequests = requests.filter(r => r.status === 'pending').length;
     const rejectedRequests = requests.filter(r => r.status === 'rejected').length;
     
@@ -551,12 +560,12 @@ class DataManager {
       totalCompanies,
       totalAdmins,
       totalRequests,
-      approvedRequests,
+      completedRequests,
       pendingRequests,
       rejectedRequests,
       requestsByRegion,
       requestsOverTime,
-      completionRate: totalRequests > 0 ? Math.round((approvedRequests / totalRequests) * 100) : 0
+      completionRate: totalRequests > 0 ? Math.round((completedRequests / totalRequests) * 100) : 0
     };
   }
 
@@ -566,15 +575,14 @@ class DataManager {
       'optigov_users',
       'optigov_requests',
       'optigov_notifications',
-      'optigov_chats',
+      'optigov_alerts',
       'optigov_compliance',
-      'optigov_notes',
       'optigov_uploads',
       'optigov_activities'
     ];
     
     keys.forEach(key => localStorage.removeItem(key));
-    this.initializePredefinedCompanies();
+    this.initializeDefaultData();
   }
 }
 
