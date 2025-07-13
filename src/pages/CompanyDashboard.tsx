@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import DataManager, { DataRequest, ComplianceItem, Upload, Notification, DEFAULT_COMPLIANCE_RULES } from '../utils/dataManager';
 import { Doughnut } from 'react-chartjs-2';
@@ -41,6 +42,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const CompanyDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState('dashboard');
   const [requests, setRequests] = useState<DataRequest[]>([]);
   const [complianceChecklist, setComplianceChecklist] = useState<ComplianceItem | null>(null);
@@ -56,6 +58,12 @@ const CompanyDashboard: React.FC = () => {
   const dataManager = DataManager.getInstance();
 
   useEffect(() => {
+    // Check if user has correct role
+    if (user && user.role !== 'company') {
+      navigate('/login');
+      return;
+    }
+    
     if (user) {
       loadData();
     }

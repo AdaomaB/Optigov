@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import DataManager, { DataRequest, Alert, DEFAULT_COMPLIANCE_RULES, User } from '../utils/dataManager';
 import { 
@@ -49,6 +50,7 @@ interface NDPRRight {
 const CitizenDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState('dashboard');
   const [requests, setRequests] = useState<DataRequest[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -116,6 +118,12 @@ const CitizenDashboard: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Check if user has correct role
+    if (user && user.role !== 'citizen') {
+      navigate('/login');
+      return;
+    }
+    
     if (user) {
       loadData();
     }

@@ -19,7 +19,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route 
-        path="/citizen-dashboard" 
+        path="/citizen" 
         element={
           <ProtectedRoute allowedRoles={['citizen']}>
             <CitizenDashboard />
@@ -27,7 +27,7 @@ const AppRoutes: React.FC = () => {
         } 
       />
       <Route 
-        path="/company-dashboard" 
+        path="/company" 
         element={
           <ProtectedRoute allowedRoles={['company']}>
             <CompanyDashboard />
@@ -35,7 +35,7 @@ const AppRoutes: React.FC = () => {
         } 
       />
       <Route 
-        path="/admin-dashboard" 
+        path="/admin" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
@@ -49,9 +49,9 @@ const AppRoutes: React.FC = () => {
           user ? (
             <Navigate 
               to={
-                user.role === 'citizen' ? '/citizen-dashboard' :
-                user.role === 'company' ? '/company-dashboard' :
-                user.role === 'admin' ? '/admin-dashboard' :
+                user.role === 'citizen' ? '/citizen' :
+                user.role === 'company' ? '/company' :
+                user.role === 'admin' ? '/admin' :
                 '/'
               } 
               replace 

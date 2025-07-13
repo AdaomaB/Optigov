@@ -238,6 +238,9 @@ class DataManager {
     users.push(newUser);
     this.setStorageItem('optigov_users', users);
     
+    // Store current user session
+    this.setStorageItem('optigov_currentUser', newUser);
+    
     // Initialize compliance checklist for companies
     if (newUser.role === 'company') {
       this.createComplianceChecklist(newUser.id);
@@ -254,11 +257,20 @@ class DataManager {
     
     if (user) {
       this.updateUserActivity(user.id);
+      // Store current user session
+      this.setStorageItem('optigov_currentUser', user);
     }
     
     return user || null;
   }
 
+  getCurrentUser(): User | null {
+    return this.getStorageItem<User | null>('optigov_currentUser', null);
+  }
+
+  clearCurrentUser(): void {
+    localStorage.removeItem('optigov_currentUser');
+  }
   getUserById(id: string): User | null {
     const users = this.getStorageItem<User[]>('optigov_users', []);
     return users.find(u => u.id === id && u.isActive) || null;

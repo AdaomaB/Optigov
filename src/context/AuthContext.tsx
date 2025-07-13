@@ -25,19 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Check for existing session
-    const savedUser = localStorage.getItem('optigov_currentUser');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        const existingUser = dataManager.getUserById(userData.id);
-        if (existingUser) {
-          setUser(existingUser);
-          resetSessionTimeout();
-        } else {
-          localStorage.removeItem('optigov_currentUser');
-        }
-      } catch (error) {
-        localStorage.removeItem('optigov_currentUser');
+    const currentUser = dataManager.getCurrentUser();
+    if (currentUser) {
+      const existingUser = dataManager.getUserById(currentUser.id);
+      if (existingUser) {
+        setUser(existingUser);
+        resetSessionTimeout();
+      } else {
+        dataManager.clearCurrentUser();
       }
     }
     setIsLoading(false);
@@ -100,15 +95,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const foundUser = dataManager.getUser(email, password);
       if (foundUser) {
         setUser(foundUser);
-        localStorage.setItem('optigov_currentUser', JSON.stringify(foundUser));
         resetSessionTimeout();
         dataManager.logActivity(foundUser.id, 'User Login', `${foundUser.role} logged in`, 'login');
         
         // Navigate based on role
-        const path = foundUser.role === 'citizen' ? '/citizen-dashboard' :
-                    foundUser.role === 'company' ? '/company-dashboard' :
-                    foundUser.role === 'admin' ? '/admin-dashboard' : '/';
-        navigate(path);
+        if (foundUser.role === 'citizen') {
+          navigate('/citizen');
+        } else if (foundUser.role === 'company') {
+          navigate('/company');
+        } else if (foundUser.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
         
         return true;
       }
@@ -123,14 +122,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newUser = dataManager.createUser(userData);
       setUser(newUser);
-      localStorage.setItem('optigov_currentUser', JSON.stringify(newUser));
       resetSessionTimeout();
       
       // Navigate based on role
-      const path = newUser.role === 'citizen' ? '/citizen-dashboard' :
-                  newUser.role === 'company' ? '/company-dashboard' :
-                  newUser.role === 'admin' ? '/admin-dashboard' : '/';
-      navigate(path);
+      if (newUser.role === 'citizen') {
+        navigate('/citizen');
+      } else if (newUser.role === 'company') {
+        navigate('/company');
+      } else if (newUser.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
       
       return true;
     } catch (error) {
@@ -144,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dataManager.logActivity(user.id, 'User Logout', `${user.role} logged out`, 'login');
     }
     setUser(null);
-    localStorage.removeItem('optigov_currentUser');
+    dataManager.clearCurrentUser();
     setSessionTimeout(SESSION_TIMEOUT);
     navigate('/');
   };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import DataManager, { Company, User } from '../utils/dataManager';
 import { Bar, Line, Pie } from 'react-chartjs-2';
@@ -53,6 +54,7 @@ ChartJS.register(
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState('companies');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -76,6 +78,12 @@ const AdminDashboard: React.FC = () => {
   const categories = ['Banking', 'Fintech', 'E-commerce', 'Telecommunications', 'Technology', 'Healthcare'];
 
   useEffect(() => {
+    // Check if user has correct role
+    if (user && user.role !== 'admin') {
+      navigate('/login');
+      return;
+    }
+    
     loadData();
   }, []);
 
