@@ -147,7 +147,7 @@ const LoginPage: React.FC = () => {
         const success = await login(formData.email, formData.password);
         if (success) {
           showToast('Login successful!', 'success');
-          // Navigation will be handled by App.tsx based on user role
+          // Navigation is handled in AuthContext
         } else {
           setError('Invalid email or password');
         }
@@ -182,7 +182,7 @@ const LoginPage: React.FC = () => {
 
         if (success) {
           showToast('Account created successfully!', 'success');
-          // Navigation will be handled by App.tsx based on user role
+          // Navigation is handled in AuthContext
         } else {
           setError('User with this email or username already exists');
         }

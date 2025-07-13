@@ -101,6 +101,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('optigov_currentUser', JSON.stringify(foundUser));
         resetSessionTimeout();
         dataManager.logActivity(foundUser.id, 'User Login', `${foundUser.role} logged in`, 'login');
+        
+        // Force navigation after login
+        setTimeout(() => {
+          const path = foundUser.role === 'citizen' ? '/citizen-dashboard' :
+                      foundUser.role === 'company' ? '/company-dashboard' :
+                      foundUser.role === 'admin' ? '/admin-dashboard' : '/';
+          window.location.href = path;
+        }, 100);
+        
         return true;
       }
       return false;
@@ -116,6 +125,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(newUser);
       localStorage.setItem('optigov_currentUser', JSON.stringify(newUser));
       resetSessionTimeout();
+      
+      // Force navigation after registration
+      setTimeout(() => {
+        const path = newUser.role === 'citizen' ? '/citizen-dashboard' :
+                    newUser.role === 'company' ? '/company-dashboard' :
+                    newUser.role === 'admin' ? '/admin-dashboard' : '/';
+        window.location.href = path;
+      }, 100);
+      
       return true;
     } catch (error) {
       console.error('Registration error:', error);

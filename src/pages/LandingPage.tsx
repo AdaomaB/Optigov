@@ -149,7 +149,8 @@ const LandingPage: React.FC = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-800 transition-colors border border-gray-600"
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {isDark ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-gray-400" />}
               </button>

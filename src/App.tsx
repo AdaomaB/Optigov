@@ -42,11 +42,11 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
-      {/* Redirect based on user role */}
-      {user && (
-        <Route 
-          path="*" 
-          element={
+      {/* Default redirect */}
+      <Route 
+        path="*" 
+        element={
+          user ? (
             <Navigate 
               to={
                 user.role === 'citizen' ? '/citizen-dashboard' :
@@ -56,9 +56,11 @@ const AppRoutes: React.FC = () => {
               } 
               replace 
             />
-          } 
-        />
-      )}
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
     </Routes>
   );
 };
