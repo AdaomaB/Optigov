@@ -68,15 +68,15 @@ const AppRoutes: React.FC = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <ToastProvider>
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
               <AppRoutes />
             </div>
-          </Router>
-        </ToastProvider>
-      </AuthProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </Router>
     </ThemeProvider>
   );
 }

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataManager, { User } from '../utils/dataManager';
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(SESSION_TIMEOUT);
+  const navigate = useNavigate();
   const dataManager = DataManager.getInstance();
 
   useEffect(() => {
@@ -102,13 +104,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetSessionTimeout();
         dataManager.logActivity(foundUser.id, 'User Login', `${foundUser.role} logged in`, 'login');
         
-        // Force navigation after login
-        setTimeout(() => {
-          const path = foundUser.role === 'citizen' ? '/citizen-dashboard' :
-                      foundUser.role === 'company' ? '/company-dashboard' :
-                      foundUser.role === 'admin' ? '/admin-dashboard' : '/';
-          window.location.href = path;
-        }, 100);
+        // Navigate based on role
+        const path = foundUser.role === 'citizen' ? '/citizen-dashboard' :
+                    foundUser.role === 'company' ? '/company-dashboard' :
+                    foundUser.role === 'admin' ? '/admin-dashboard' : '/';
+        navigate(path);
         
         return true;
       }
@@ -126,13 +126,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('optigov_currentUser', JSON.stringify(newUser));
       resetSessionTimeout();
       
-      // Force navigation after registration
-      setTimeout(() => {
-        const path = newUser.role === 'citizen' ? '/citizen-dashboard' :
-                    newUser.role === 'company' ? '/company-dashboard' :
-                    newUser.role === 'admin' ? '/admin-dashboard' : '/';
-        window.location.href = path;
-      }, 100);
+      // Navigate based on role
+      const path = newUser.role === 'citizen' ? '/citizen-dashboard' :
+                  newUser.role === 'company' ? '/company-dashboard' :
+                  newUser.role === 'admin' ? '/admin-dashboard' : '/';
+      navigate(path);
       
       return true;
     } catch (error) {
@@ -148,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('optigov_currentUser');
     setSessionTimeout(SESSION_TIMEOUT);
+    navigate('/');
   };
 
   if (isLoading) {

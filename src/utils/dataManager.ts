@@ -123,7 +123,8 @@ class DataManager {
   private static instance: DataManager;
 
   private constructor() {
-    // No initialization of dummy data - everything starts empty
+    // Initialize with some sample companies for testing
+    this.initializeSampleCompanies();
   }
 
   static getInstance(): DataManager {
@@ -131,6 +132,63 @@ class DataManager {
       DataManager.instance = new DataManager();
     }
     return DataManager.instance;
+  }
+
+  private initializeSampleCompanies(): void {
+    const existingUsers = this.getStorageItem<User[]>('optigov_users', []);
+    
+    // Only add sample companies if no users exist
+    if (existingUsers.length === 0) {
+      const sampleCompanies = [
+        {
+          username: 'gtbank',
+          email: 'privacy@gtbank.com',
+          password: 'password123',
+          phone: '+2348012345678',
+          role: 'company' as const,
+          organizationName: 'Guaranty Trust Bank',
+          organizationType: 'Banking',
+          registrationNumber: 'RC001234',
+          contactPerson: 'Johnson Blessing',
+          address: 'Victoria Island, Lagos',
+          website: 'https://gtbank.com'
+        },
+        {
+          username: 'jumia',
+          email: 'privacy@jumia.com.ng',
+          password: 'password123',
+          phone: '+2348023456789',
+          role: 'company' as const,
+          organizationName: 'Jumia Nigeria',
+          organizationType: 'E-commerce',
+          registrationNumber: 'RC002345',
+          contactPerson: 'Johnson Blessing',
+          address: 'Ikeja, Lagos',
+          website: 'https://jumia.com.ng'
+        },
+        {
+          username: 'paystack',
+          email: 'privacy@paystack.com',
+          password: 'password123',
+          phone: '+2348034567890',
+          role: 'company' as const,
+          organizationName: 'Paystack',
+          organizationType: 'Fintech',
+          registrationNumber: 'RC003456',
+          contactPerson: 'Johnson Blessing',
+          address: 'Yaba, Lagos',
+          website: 'https://paystack.com'
+        }
+      ];
+
+      sampleCompanies.forEach(companyData => {
+        try {
+          this.createUser(companyData);
+        } catch (error) {
+          // Company already exists, skip
+        }
+      });
+    }
   }
 
   private generateId(): string {
@@ -147,8 +205,12 @@ class DataManager {
   }
 
   private setStorageItem(key: string, value: any): void {
-    localStorage.setItem(key, JSON.stringify(value));
-    this.triggerStorageEvent();
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      this.triggerStorageEvent();
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
+    }
   }
 
   private triggerStorageEvent(): void {
@@ -577,6 +639,7 @@ class DataManager {
     ];
     
     keys.forEach(key => localStorage.removeItem(key));
+    this.initializeSampleCompanies();
   }
 }
 
