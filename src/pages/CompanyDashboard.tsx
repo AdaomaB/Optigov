@@ -414,7 +414,7 @@ const CompanyDashboard: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                     <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                      {overdue.length} request(s) overdue (>48 hours)
+                       {overdue.length} request(s) overdue (&gt;48 hours)
                     </p>
                   </div>
                 </div>
