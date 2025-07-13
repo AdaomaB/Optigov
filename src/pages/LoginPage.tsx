@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Shield, Mail, Phone, Lock, User, Eye, EyeOff, Sun, Moon, AlertCircle } from 'lucide-react';
+import { useToast } from '../components/Toast';
+import { Shield, Mail, Phone, Lock, User, Eye, EyeOff, Sun, Moon, AlertCircle, Building, UserCheck } from 'lucide-react';
 
 type UserRole = 'citizen' | 'company' | 'admin';
 type FormMode = 'login' | 'signup';
@@ -11,25 +12,55 @@ const LoginPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<UserRole>('citizen');
   const [formMode, setFormMode] = useState<FormMode>('login');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
-    name: '',
+    // Common fields
+    username: '',
     email: '',
-    phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: '',
+    
+    // Citizen fields
+    firstName: '',
+    lastName: '',
+    nationalId: '',
+    
+    // Company fields
+    organizationName: '',
+    organizationType: '',
+    registrationNumber: '',
+    contactPerson: 'Johnson Blessing',
+    address: '',
+    website: '',
+    
+    // Admin fields
+    department: '',
+    employmentId: '',
+    permissionLevel: 3
   });
   
   const { login, register } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const tabs: { key: UserRole; label: string; color: string }[] = [
-    { key: 'citizen', label: 'Citizen', color: 'bg-green-600' },
-    { key: 'company', label: 'Company', color: 'bg-blue-600' },
-    { key: 'admin', label: 'Admin', color: 'bg-purple-600' }
+  const tabs: { key: UserRole; label: string; color: string; icon: any }[] = [
+    { key: 'citizen', label: 'Citizen', color: 'bg-green-600', icon: User },
+    { key: 'company', label: 'Company', color: 'bg-blue-600', icon: Building },
+    { key: 'admin', label: 'Admin', color: 'bg-purple-600', icon: UserCheck }
+  ];
+
+  const organizationTypes = [
+    'Banking', 'Fintech', 'E-commerce', 'Telecommunications', 'Technology', 
+    'Healthcare', 'Insurance', 'Government', 'Education', 'Other'
+  ];
+
+  const departments = [
+    'Data Protection', 'Compliance', 'Legal', 'IT Security', 'Operations', 'Management'
   ];
 
   const validateEmail = (email: string) => {
@@ -42,14 +73,80 @@ const LoginPage: React.FC = () => {
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
 
+  const validateForm = () => {
+    if (formMode === 'login') {
+      if (!formData.email || !formData.password) {
+        setError('Email and password are required');
+        return false;
+      }
+      if (!validateEmail(formData.email)) {
+        setError('Please enter a valid email address');
+        return false;
+      }
+      return true;
+    }
+
+    // Signup validation
+    if (!formData.username || !formData.email || !formData.password || !formData.phone) {
+      setError('All required fields must be filled');
+      return false;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!validatePhone(formData.phone)) {
+      setError('Please enter a valid Nigerian phone number');
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return false;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+
+    // Role-specific validation
+    if (activeTab === 'citizen') {
+      if (!formData.firstName || !formData.lastName || !formData.nationalId) {
+        setError('All citizen fields are required');
+        return false;
+      }
+    } else if (activeTab === 'company') {
+      if (!formData.organizationName || !formData.organizationType || !formData.registrationNumber || !formData.address) {
+        setError('All company fields are required');
+        return false;
+      }
+    } else if (activeTab === 'admin') {
+      if (!formData.department || !formData.employmentId) {
+        setError('All admin fields are required');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
     setError('');
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (formMode === 'login') {
         const success = await login(formData.email, formData.password);
         if (success) {
+          showToast('Login successful!', 'success');
           // Redirect based on role
           switch (activeTab) {
             case 'citizen':
@@ -66,41 +163,36 @@ const LoginPage: React.FC = () => {
           setError('Invalid email or password');
         }
       } else {
-        // Validation for signup
-        if (!formData.name.trim()) {
-          setError('Full name is required');
-          return;
-        }
-        
-        if (!validateEmail(formData.email)) {
-          setError('Please enter a valid email address');
-          return;
-        }
-        
-        if (!validatePhone(formData.phone)) {
-          setError('Please enter a valid Nigerian phone number');
-          return;
-        }
-        
-        if (formData.password.length < 6) {
-          setError('Password must be at least 6 characters long');
-          return;
-        }
-        
-        if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
-          return;
+        // Prepare user data based on role
+        const userData: any = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          role: activeTab
+        };
+
+        if (activeTab === 'citizen') {
+          userData.firstName = formData.firstName;
+          userData.lastName = formData.lastName;
+          userData.nationalId = formData.nationalId;
+        } else if (activeTab === 'company') {
+          userData.organizationName = formData.organizationName;
+          userData.organizationType = formData.organizationType;
+          userData.registrationNumber = formData.registrationNumber;
+          userData.contactPerson = formData.contactPerson;
+          userData.address = formData.address;
+          userData.website = formData.website;
+        } else if (activeTab === 'admin') {
+          userData.department = formData.department;
+          userData.employmentId = formData.employmentId;
+          userData.permissionLevel = formData.permissionLevel;
         }
 
-        const success = await register({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          role: activeTab
-        });
+        const success = await register(userData);
 
         if (success) {
+          showToast('Account created successfully!', 'success');
           // Redirect based on role
           switch (activeTab) {
             case 'citizen':
@@ -114,7 +206,7 @@ const LoginPage: React.FC = () => {
               break;
           }
         } else {
-          setError('User with this email already exists');
+          setError('User with this email or username already exists');
         }
       }
     } catch (error) {
@@ -126,11 +218,23 @@ const LoginPage: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      name: '',
+      username: '',
       email: '',
-      phone: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      phone: '',
+      firstName: '',
+      lastName: '',
+      nationalId: '',
+      organizationName: '',
+      organizationType: '',
+      registrationNumber: '',
+      contactPerson: 'Johnson Blessing',
+      address: '',
+      website: '',
+      department: '',
+      employmentId: '',
+      permissionLevel: 3
     });
     setError('');
   };
@@ -145,6 +249,192 @@ const LoginPage: React.FC = () => {
     setError('');
   };
 
+  const renderRoleSpecificFields = () => {
+    if (formMode === 'login') return null;
+
+    switch (activeTab) {
+      case 'citizen':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Last name"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                National ID *
+              </label>
+              <input
+                type="text"
+                value={formData.nationalId}
+                onChange={(e) => setFormData(prev => ({ ...prev, nationalId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="National ID number"
+              />
+            </div>
+          </>
+        );
+
+      case 'company':
+        return (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Organization Name *
+              </label>
+              <input
+                type="text"
+                value={formData.organizationName}
+                onChange={(e) => setFormData(prev => ({ ...prev, organizationName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Company name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Organization Type *
+                </label>
+                <select
+                  value={formData.organizationType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, organizationType: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select type</option>
+                  {organizationTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Registration Number *
+                </label>
+                <input
+                  type="text"
+                  value={formData.registrationNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="RC number"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Contact Person
+              </label>
+              <input
+                type="text"
+                value={formData.contactPerson}
+                onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Contact person name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Address *
+              </label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Company address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Website
+              </label>
+              <input
+                type="url"
+                value={formData.website}
+                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="https://company.com"
+              />
+            </div>
+          </>
+        );
+
+      case 'admin':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Department *
+                </label>
+                <select
+                  value={formData.department}
+                  onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select department</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Employment ID *
+                </label>
+                <input
+                  type="text"
+                  value={formData.employmentId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, employmentId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="EMP001"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Permission Level
+              </label>
+              <select
+                value={formData.permissionLevel}
+                onChange={(e) => setFormData(prev => ({ ...prev, permissionLevel: parseInt(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value={1}>Level 1 - Basic</option>
+                <option value={2}>Level 2 - Intermediate</option>
+                <option value={3}>Level 3 - Advanced</option>
+                <option value={4}>Level 4 - Super Admin</option>
+              </select>
+            </div>
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
@@ -156,7 +446,7 @@ const LoginPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-6">
@@ -178,13 +468,14 @@ const LoginPage: React.FC = () => {
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
-                className={`flex-1 py-4 px-4 text-sm font-medium transition-colors ${
+                className={`flex-1 py-4 px-4 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
                   activeTab === tab.key
                     ? `${tab.color} text-white`
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {tab.label}
+                <tab.icon className="h-4 w-4" />
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
@@ -223,19 +514,20 @@ const LoginPage: React.FC = () => {
             )}
 
             <div className="space-y-4">
+              {/* Common Fields */}
               {formMode === 'signup' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Full Name
+                    Username *
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <input
                       type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      value={formData.username}
+                      onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Enter your full name"
+                      placeholder="Choose a username"
                     />
                   </div>
                 </div>
@@ -243,7 +535,7 @@ const LoginPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address
+                  Email Address *
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -260,7 +552,7 @@ const LoginPage: React.FC = () => {
               {formMode === 'signup' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Phone Number
+                    Phone Number *
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -277,7 +569,7 @@ const LoginPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password
+                  Password *
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -301,20 +593,30 @@ const LoginPage: React.FC = () => {
               {formMode === 'signup' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Confirm Password
+                    Confirm Password *
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Confirm your password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
                 </div>
               )}
+
+              {/* Role-specific fields */}
+              {renderRoleSpecificFields()}
 
               <button
                 onClick={handleSubmit}

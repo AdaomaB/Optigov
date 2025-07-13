@@ -12,14 +12,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Check localStorage first, then system preference
     const saved = localStorage.getItem('optigov_theme');
     if (saved !== null) {
-      return JSON.parse(saved);
+      return saved === 'dark';
     }
     // Default to system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
-    localStorage.setItem('optigov_theme', JSON.stringify(isDark));
+    localStorage.setItem('optigov_theme', isDark ? 'dark' : 'light');
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
