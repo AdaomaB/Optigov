@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import DataManager, { DataRequest, ComplianceItem, Upload, Notification, COMPLIANCE_CHECKLIST } from '../utils/dataManager';
+import DataManager, { DataRequest, ComplianceItem, Upload, Notification, DEFAULT_COMPLIANCE_RULES } from '../utils/dataManager';
 import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -462,7 +462,7 @@ const CompanyDashboard: React.FC = () => {
               </div>
               
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {COMPLIANCE_CHECKLIST.slice(0, 5).map((rule, index) => (
+                {DEFAULT_COMPLIANCE_RULES.slice(0, 5).map((rule, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <button
                       onClick={() => handleComplianceToggle(index)}
@@ -780,7 +780,7 @@ const CompanyDashboard: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {COMPLIANCE_CHECKLIST.map((rule, index) => (
+          {DEFAULT_COMPLIANCE_RULES.map((rule, index) => (
             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div className="flex items-center space-x-3">
                 <button
